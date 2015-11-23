@@ -116,7 +116,7 @@ validateData <- trainClean[-inTrain, ]
 ```
 
 ## Generating the model
-We Random Forest algorithm to build a predictive model because it automatically selects important variables and is robust to correlated covariates & outliers in general. (See appendix for information on other models considered).  We will use 5-fold cross validation when applying the algorithm.
+We use the Random Forest algorithm to build a predictive model because it automatically selects important variables and is robust to correlated covariates & outliers in general. (See appendix for information on other models considered).  We will use 5-fold cross validation when applying the algorithm.
 
 ```{r, cache=TRUE}
 controlRf <- trainControl(method="cv", 5)

@@ -117,7 +117,7 @@ names(trainHAR)
 # Select only those columns that seem like possible predictors
 trainHAR &lt;- subset(trainHAR, select=-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window))
 testHAR &lt;- subset(testHAR, select=-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window))</code></pre>
-<p>KSM: The training dataset now has dimensions {19622, 154} and the test dataset has dimensions {20, 154}. A quick look at the structure of the data shows that there are several columns with missing values. Rather than impute these values we remove the columns entirely.</p>
+<p>A quick look at the structure of the data shows that there are several columns with missing values. Rather than impute these values we remove the columns entirely.</p>
 <pre class="r"><code>isAnyMissing &lt;- sapply(trainHAR, function (x) any(is.na(x) | x == &quot;&quot;))
 if (any(isAnyMissing)) {
     sprintf(&quot;Removing columns that have 'NA' from test and train data&quot;)
@@ -130,8 +130,7 @@ if (any(isAnyMissing)) {
         stop(&quot;... Could not remove all NA's from training data&quot;)
     }
 }</code></pre>
-<p>KSM: The training dataset now has dimensions {19622, 54} and the test dataset has dimensions {20, 54}.</p>
-<p>KSM: The training dataset now has dimensions {19622, 54} and the test dataset has dimensions {20, 54}. Finally make sure all the columns are numeric.</p>
+<p>Finally make sure all the columns are numeric.</p>
 <pre class="r"><code># make sure columns are numeric
 classe &lt;- trainHAR$classe
 trainClean &lt;- trainHAR[, sapply(trainHAR, is.numeric)]
@@ -150,7 +149,7 @@ validateData &lt;- trainClean[-inTrain, ]</code></pre>
 </div>
 <div id="generating-the-model" class="section level2">
 <h2>Generating the model</h2>
-<p>We Random Forest algorithm to build a predictive model because it automatically selects important variables and is robust to correlated covariates &amp; outliers in general. (See appendix for information on other models considered). We will use 5-fold cross validation when applying the algorithm.</p>
+<p>We use the Random Forest algorithm to build a predictive model because it automatically selects important variables and is robust to correlated covariates &amp; outliers in general. (See appendix for information on other models considered). We will use 5-fold cross validation when applying the algorithm.</p>
 <pre class="r"><code>controlRf &lt;- trainControl(method=&quot;cv&quot;, 5)
 modelRf &lt;- train(classe ~ ., data=trainData, method=&quot;rf&quot;, trControl=controlRf)
 # save(modelRf, file=modelRf.data)
