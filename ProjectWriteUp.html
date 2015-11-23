@@ -174,6 +174,61 @@ modelRf</code></pre>
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
 ## The final value used for the model was mtry = 27.</code></pre>
+<p>Evaluate the model against the validation set.</p>
+<pre class="r"><code>predictRf &lt;- predict(modelRf, validateData)
+confusionMatrix(validateData$classe, predictRf)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1674    0    0    0    0
+##          B    5 1133    1    0    0
+##          C    0    3 1023    0    0
+##          D    0    0    8  956    0
+##          E    0    0    0    4 1078
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9964          
+##                  95% CI : (0.9946, 0.9978)
+##     No Information Rate : 0.2853          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9955          
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9970   0.9974   0.9913   0.9958   1.0000
+## Specificity            1.0000   0.9987   0.9994   0.9984   0.9992
+## Pos Pred Value         1.0000   0.9947   0.9971   0.9917   0.9963
+## Neg Pred Value         0.9988   0.9994   0.9981   0.9992   1.0000
+## Prevalence             0.2853   0.1930   0.1754   0.1631   0.1832
+## Detection Rate         0.2845   0.1925   0.1738   0.1624   0.1832
+## Detection Prevalence   0.2845   0.1935   0.1743   0.1638   0.1839
+## Balanced Accuracy      0.9985   0.9980   0.9953   0.9971   0.9996</code></pre>
+<pre class="r"><code>accuracy &lt;- postResample(predictRf, validateData$classe)
+oose &lt;- 1 - accuracy[1]</code></pre>
+<p>The model has accuracy of 99.6431606% and out of sample error 0.3568394%, which is pretty good.</p>
+</div>
+<div id="prediction" class="section level2">
+<h2>Prediction</h2>
+<p>The random forest model that was build in the previous section is used to predict the <code>classe</code> variable for the test data set.</p>
+<pre class="r"><code>testClean.classe &lt;- predict(modelRf, testClean)
+
+# pml_write_files supplied by instructors to generate
+# individual files for every test data
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0(&quot;problem_id_&quot;,i,&quot;.txt&quot;)
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+# Write test file
+pml_write_files(testClean.classe)</code></pre>
 </div>
 
 

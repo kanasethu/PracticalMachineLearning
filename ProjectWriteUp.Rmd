@@ -65,7 +65,6 @@ names(trainHAR)
 trainHAR <- subset(trainHAR, select=-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window))
 testHAR <- subset(testHAR, select=-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window))
 ```
-KSM: The training dataset now has dimensions {`r dim(trainHAR)`} and the test dataset has dimensions {`r dim(testHAR)`}.
 A quick look at the structure of the data shows that there are several columns with missing values. Rather than impute these values we remove the columns entirely.
 ```{r}
 isAnyMissing <- sapply(trainHAR, function (x) any(is.na(x) | x == ""))
@@ -81,7 +80,7 @@ if (any(isAnyMissing)) {
     }
 }
 ```
-KSM: The training dataset now has dimensions {`r dim(trainHAR)`} and the test dataset has dimensions {`r dim(testHAR)`}.
+
 ```{r, echo=FALSE}
 isAnyMissing <- sapply(testHAR, function (x) any(is.na(x) | x == ""))
 if (any(isAnyMissing)) {
@@ -96,7 +95,6 @@ if (any(isAnyMissing)) {
     }
 }
 ```
-KSM: The training dataset now has dimensions {`r dim(trainHAR)`} and the test dataset has dimensions {`r dim(testHAR)`}.
 Finally make sure all the columns are numeric.
 ```{r}
 # make sure columns are numeric
@@ -120,7 +118,7 @@ validateData <- trainClean[-inTrain, ]
 ## Generating the model
 We Random Forest algorithm to build a predictive model because it automatically selects important variables and is robust to correlated covariates & outliers in general. (See appendix for information on other models considered).  We will use 5-fold cross validation when applying the algorithm.
 
-```{r}
+```{r, cache=TRUE}
 controlRf <- trainControl(method="cv", 5)
 modelRf <- train(classe ~ ., data=trainData, method="rf", trControl=controlRf)
 # save(modelRf, file=modelRf.data)
