@@ -1,0 +1,156 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "KS"
+date: "November 22, 2015"
+output: html_document
+---
+
+## Backgroud
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants are used. Participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+*Data*
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The goal of this class project predict the manner in which they did the exercise. This is the "classe" variable in the training set. This report describes how the model was built, how cross validation was performed, and the accuracy and out of sample error of the model. The final model is used to predict 20 different test cases.
+
+## Getting and Cleaning Data
+
+### Download the data
+The testing and training datasets are downloaded from the website provided.
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(caret)
+library(randomForest)
+
+trainUrl <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainFile <- "./data/pml-training.csv"
+testFile  <- "./data/pml-testing.csv"
+if (!file.exists("./data")) {
+    dir.create("./data")
+}
+if (!file.exists(trainFile)) {
+    sprintf("Downloading training data from %s", trainUrl)
+    download.file(trainUrl, destfile=trainFile, method="curl")
+}
+if (!file.exists(testFile)) {
+    sprintf("Downloading testing data from %s", testUrl)
+    download.file(testUrl, destfile=testFile, method="curl")
+}
+```
+
+### Scan the data
+A quick scan through the data shows that it contains "#DIV/0!" strings.  When reading the data ensure that these strings are coded as "NA".
+
+```{r}
+trainHAR <- read.csv("./data/pml-training.csv", na.strings=c('NA','','#DIV/0!'))
+testHAR <- read.csv("./data/pml-testing.csv", na.strings=c('NA','','#DIV/0!'))
+```
+
+The training dataset has dimensions {`r dim(trainHAR)`} and the test dataset has dimensions {`r dim(testHAR)`}.
+
+### Clean the data
+Looking at the summary of the data, it seems obvious that certain variables like `X` and `username` should not be counted as predictors.  Remove these.
+
+```{r, results='hide'}
+str(trainHAR)
+names(trainHAR)
+# Select only those columns that seem like possible predictors
+trainHAR <- subset(trainHAR, select=-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window))
+testHAR <- subset(testHAR, select=-c(X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window))
+```
+KSM: The training dataset now has dimensions {`r dim(trainHAR)`} and the test dataset has dimensions {`r dim(testHAR)`}.
+A quick look at the structure of the data shows that there are several columns with missing values. Rather than impute these values we remove the columns entirely.
+```{r}
+isAnyMissing <- sapply(trainHAR, function (x) any(is.na(x) | x == ""))
+if (any(isAnyMissing)) {
+    sprintf("Removing columns that have 'NA' from test and train data")
+    trainHAR <- trainHAR[,!isAnyMissing]
+    testHAR <- testHAR[,!isAnyMissing]
+
+    # Check that "NA"s were removed
+    isAnyMissing <- sapply(trainHAR, function (x) any(is.na(x) | x == ""))
+    if(any(isAnyMissing)) {
+        stop("... Could not remove all NA's from training data")
+    }
+}
+```
+KSM: The training dataset now has dimensions {`r dim(trainHAR)`} and the test dataset has dimensions {`r dim(testHAR)`}.
+```{r, echo=FALSE}
+isAnyMissing <- sapply(testHAR, function (x) any(is.na(x) | x == ""))
+if (any(isAnyMissing)) {
+    sprintf("Removing columns that have 'NA' from test and train data")
+    trainHAR <- trainHAR[,!isAnyMissing]
+    testHAR <- testHAR[,!isAnyMissing]
+
+    # Check that "NA"s were removed
+    isAnyMissing <- sapply(testHAR, function (x) any(is.na(x) | x == ""))
+    if(any(isAnyMissing)) {
+        stop("... Could not remove all NA's from training data")
+    }
+}
+```
+KSM: The training dataset now has dimensions {`r dim(trainHAR)`} and the test dataset has dimensions {`r dim(testHAR)`}.
+Finally make sure all the columns are numeric.
+```{r}
+# make sure columns are numeric
+classe <- trainHAR$classe
+trainClean <- trainHAR[, sapply(trainHAR, is.numeric)]
+trainClean$classe <- classe
+testClean <- testHAR[, sapply(testHAR, is.numeric)]
+```
+
+The training dataset now has dimensions {`r dim(trainClean)`} and the test dataset has dimensions {`r dim(testClean)`}.
+
+### Split the data into training and validation set
+Split the training data set further into a training (70%) and validation (30%) set.  The training set is used to build the model and the validation set is used to, you guesssed it, validate the model and calculate the accuracy and out of sample errors.
+```{r}
+set.seed(12345) # For reproducibility
+inTrain <- createDataPartition(trainClean$classe, p=0.70, list=F)
+trainData <- trainClean[inTrain, ]
+validateData <- trainClean[-inTrain, ]
+```
+
+## Generating the model
+We Random Forest algorithm to build a predictive model because it automatically selects important variables and is robust to correlated covariates & outliers in general. (See appendix for information on other models considered).  We will use 5-fold cross validation when applying the algorithm.
+
+```{r}
+controlRf <- trainControl(method="cv", 5)
+modelRf <- train(classe ~ ., data=trainData, method="rf", trControl=controlRf)
+# save(modelRf, file=modelRf.data)
+# load(file="modelrf.data", verbose=TRUE)
+modelRf
+```
+Evaluate the model against the validation set.
+```{r}
+predictRf <- predict(modelRf, validateData)
+confusionMatrix(validateData$classe, predictRf)
+accuracy <- postResample(predictRf, validateData$classe)
+oose <- 1 - accuracy[1]
+```
+The model has accuracy of `r 100*postResample(predictRf, validateData$classe)[1]`% and out of sample error `r 100*(1 - postResample(predictRf, validateData$classe)[1])`%, which is pretty good.
+
+## Prediction
+The random forest model that was build in the previous section is used to predict the `classe` variable for the test data set.
+```{r}
+testClean.classe <- predict(modelRf, testClean)
+
+# pml_write_files supplied by instructors to generate
+# individual files for every test data
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+# Write test file
+pml_write_files(testClean.classe)
+```
